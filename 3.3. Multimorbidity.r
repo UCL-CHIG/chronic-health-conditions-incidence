@@ -1,17 +1,18 @@
 
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Estimates multimorbidity
 # *******************************************
 
 # load --------------------------------------------------------------------
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 library(ggplot2)
 
-load("chc_cumul/processed/chc_diagnoses.rda")
-load("chc_cumul/processed/cohort_spine_censor.rda")
+load("1_CHC_CUMUL/processed/chc_diagnoses.rda")
+load("1_CHC_CUMUL/processed/cohort_spine_censor.rda")
 
 cohort_spine <- cohort_spine[el_scheme_8 == T]
 chc_diagnoses <- chc_diagnoses[, c("encrypted_hesid", "epistart", "type")]
@@ -171,6 +172,8 @@ dt_long[by_age > 10 & academicyearofbirth == 2010, n_children := NA]
 dt_long[by_age > 09 & academicyearofbirth == 2011, n_children := NA]
 dt_long[by_age > 08 & academicyearofbirth == 2012, n_children := NA]
 
+
+
 tiff("chc_cumul/outputs/multi/multi-graph-all-children.tiff",
      width = 12, height = 8, units = "in", res = 300)
 ggplot(dt_long, aes(x = by_age,
@@ -178,7 +181,7 @@ ggplot(dt_long, aes(x = by_age,
                     fill = cond_n_group)) +
   geom_area(position = "fill") +
   scale_fill_discrete(name = "Number of CHC groups",
-                      labels = "1", "2", "3", "4", "5") +
+                      labels = "1", "2", "3", "4", "5+") +
   scale_y_continuous(labels = c("0%", "25%", "50%", "75%", "100%")) +
   scale_x_continuous(breaks = 0:16,
                      labels = 0:16) +

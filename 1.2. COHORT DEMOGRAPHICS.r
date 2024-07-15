@@ -1,9 +1,11 @@
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Describes cohort demographics
 # *******************************************
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 load("chc_cumul/processed/cohort_spine.rda")
 cohort_spine[is.na(multiple), multiple := 0]

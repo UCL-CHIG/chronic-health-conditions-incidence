@@ -1,15 +1,17 @@
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Creates censoring indicators
 # *******************************************
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 library(lubridate)
 
 load("chc_cumul/processed/cohort_spine.rda")
 
-master_dir <- "[]:/Working/Master data TEST"
+master_dir <- "[path omitted]"
 
 # applicable in all scenarios (whichever comes first)
 # rule 1: death

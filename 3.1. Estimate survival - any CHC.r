@@ -1,12 +1,13 @@
 
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Calculates time to first chronic health condition
 # *******************************************
 
 # LOAD --------------------------------------------------------------------
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 library(survival)
 library(ggplot2)
@@ -16,10 +17,10 @@ library(gridExtra)
 library(tidycmprsk)
 library(ggsurvfit)
 
-master_dir <- "[]:/Working/Master data TEST"
+master_dir <- "[path omitted]"
 
-load("chc_cumul/processed/chc_diagnoses.rda")
-load("chc_cumul/processed/cohort_spine_censor.rda")
+load("1_CHC_CUMUL/processed/chc_diagnoses.rda")
+load("1_CHC_CUMUL/processed/cohort_spine_censor.rda")
 
 chc_diagnoses <- chc_diagnoses[, c("encrypted_hesid", "epistart")]
 
@@ -134,7 +135,7 @@ p1$plot <- p1$plot +
   guides(fill = guide_legend(title = "Denominator definition"),
          colour = guide_legend(title = "Denominator definition"))
 
-tiff("chc_cumul/outputs/surv/km-plots-all-el-schemes-b2004.tiff",
+tiff("1_CHC_CUMUL/outputs/surv/km-plots-all-el-schemes-b2004.tiff",
      height = 12, width = 8, units = "in", res = 300)
 p1
 dev.off()
@@ -163,7 +164,7 @@ for (i in 2:8) {
 
 rm(i, tmp)
 table(surv_output_data$n.event < 10)
-write.csv(surv_output_data, file = "chc_cumul/outputs/surv/km-plots-all-el-schemes-b2004-underlying-data.csv", row.names = F)
+write.csv(surv_output_data, file = "1_CHC_CUMUL/outputs/surv/km-plots-all-el-schemes-b2004-underlying-data.csv", row.names = F)
 
 rm(surv_list, surv_output_data)
 
@@ -205,7 +206,7 @@ p1$plot <- p1$plot +
   guides(fill = guide_legend(title = "Birth cohort\n(academic year ending)"),
          colour = guide_legend(title = "Birth cohort\n(academic year ending)"))
 
-tiff("chc_cumul/outputs/surv/km-plots-el-scheme-8-all-birth-cohorts.tiff",
+tiff("1_CHC_CUMUL/outputs/surv/km-plots-el-scheme-8-all-birth-cohorts.tiff",
      height = 12, width = 8, units = "in", res = 300)
 p1
 dev.off()
@@ -225,9 +226,107 @@ surv_output_data[is.na(surv), n.risk := NA]
 surv_output_data[is.na(surv), cumul_inc := NA]
 surv_output_data[is.na(surv), n.event := NA]
 
-write.csv(surv_output_data, file = "chc_cumul/outputs/surv/km-plots-el-scheme-8-all-birth-cohorts-underlying-data.csv", row.names = F)
+write.csv(surv_output_data, file = "1_CHC_CUMUL/outputs/surv/km-plots-el-scheme-8-all-birth-cohorts-underlying-data.csv", row.names = F)
 
 rm(surv_dt); gc()
+
+# ALL EL SCHEMES ALL COHORTS ----------------------------------------------
+
+for (birth_cohort in 2003:2012) {
+  
+  surv_list <- list(
+    el_scheme_1 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_1 == T, ]),
+    el_scheme_2 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_2 == T, ]),
+    el_scheme_3 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_3 == T, ]),
+    el_scheme_4 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_4 == T, ]),
+    el_scheme_5 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_5 == T, ]),
+    el_scheme_6 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_6 == T, ]),
+    el_scheme_7 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_7 == T, ]),
+    el_scheme_8 = survfit(Surv(status_time_mo, status) ~ 1, data = surv_dt[surv_dt$academicyearofbirth %in% birth_cohort & surv_dt$el_scheme_8 == T, ])
+  )
+  
+  if (birth_cohort >= 2005) {
+    for (j in 1:length(surv_list)) {
+      if (birth_cohort == 2005) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 1))] <- NA }
+      if (birth_cohort == 2006) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 2))] <- NA }
+      if (birth_cohort == 2007) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 3))] <- NA }
+      if (birth_cohort == 2008) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 4))] <- NA }
+      if (birth_cohort == 2009) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 5))] <- NA }
+      if (birth_cohort == 2010) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 6))] <- NA }
+      if (birth_cohort == 2011) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 7))] <- NA }
+      if (birth_cohort == 2012) { surv_list[[j]]$surv[surv_list[[j]]$time > (192 - (12 * 8))] <- NA }
+    }
+  }
+  
+  # p1 <- ggsurvplot(surv_list,
+  #                  combine = T,
+  #                  fun = "event",
+  #                  censor = F,
+  #                  conf.int = F,
+  #                  xlab = "Time from birth (years)",
+  #                  ylab = "Cumulative incidence (%)",
+  #                  legend.labs = c(paste0("Sensitivity ", 1:7), "Main analysis"),
+  #                  legend = "bottom",
+  #                  #title = "Births 2003/4",
+  #                  palette = "Set1")
+  # 
+  # p1$plot <- p1$plot +
+  #   scale_x_continuous(breaks = seq(0, 192, by = 12),
+  #                      labels = 0:16) +
+  #   scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3),
+  #                      labels = c(0, 10, 20, 30)) +
+  #   guides(fill = guide_legend(title = "Denominator definition"),
+  #          colour = guide_legend(title = "Denominator definition"))
+  
+  # tiff(paste0("1_CHC_CUMUL/outputs/surv/all-el-schemes/km-plots-all-el-schemes-b", birth_cohort, ".tiff"),
+  #      height = 12, width = 8, units = "in", res = 300)
+  # p1
+  # dev.off()
+  
+  # tables
+  surv_output_data <- data.table(
+    sensitivity_analysis = 1,
+    time = surv_list[[1]]$time,
+    n.risk = surv_list[[1]]$n.risk,
+    n.event = surv_list[[1]]$n.event,
+    surv = surv_list[[1]]$surv,
+    cumul_inc = 1 - surv_list[[1]]$surv
+  )
+  
+  for (i in 2:length(surv_list)) {
+    tmp <- data.table(
+      sensitivity_analysis = i,
+      time = surv_list[[i]]$time,
+      n.risk = surv_list[[i]]$n.risk,
+      n.event = surv_list[[i]]$n.event,
+      surv = surv_list[[i]]$surv,
+      cumul_inc = 1 - surv_list[[i]]$surv
+    )
+    surv_output_data <- rbind(surv_output_data, tmp)
+  }
+  
+  rm(i, tmp)
+  
+  # set n to NA where surv is NA
+  surv_output_data[is.na(surv), n.risk := NA]
+  surv_output_data[is.na(surv), cumul_inc := NA]
+  surv_output_data[is.na(surv), n.event := NA]
+  
+  if (any(surv_output_data$n.event < 10, na.rm = T)) {
+    print(paste0(birth_cohort, " has counts <10"))
+  }
+  
+  write.csv(surv_output_data,
+            file = paste0("1_CHC_CUMUL/outputs/surv/all-el-schemes/km-plots-all-el-schemes-b", birth_cohort, "-underlying-data.csv"),
+            row.names = F)
+  
+  rm(surv_list, surv_output_data)
+  
+}
+
+rm(birth_cohort, j, p1)
+
+
 
 # COMPETING RISKS ---------------------------------------------------------
 
@@ -309,7 +408,7 @@ output <- data.table(
 
 # output <- output[outcome == 2 & time == 192] # use only CHC output and only at final time point
 
-write.csv(output, file = "chc_cumul/outputs/comp/comp_risk_dt.csv")
+write.csv(output, file = "1_CHC_CUMUL/outputs/comp/comp_risk_dt.csv")
 
 # CLEAR -------------------------------------------------------------------
 

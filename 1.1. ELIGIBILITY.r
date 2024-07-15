@@ -1,17 +1,18 @@
 
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Identifies birth records, links in first activity and creates eligility flags
 # *******************************************
 
 # SET UP WORKSPACE --------------------------------------------------------
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 library(RODBC)
 library(dplyr)
 
-master_dir <- "P:/Working/Master data TEST"
+master_dir <- "[path omitted]"
 birth_cohorts <- 2003:2012
 
 # LOAD BIRTHS ---------------------------------------------------------------
@@ -19,14 +20,6 @@ birth_cohorts <- 2003:2012
 birth_episodes <- fread(paste0(master_dir, "/HES_APC_Baby_Tail_clean_vars_combined.csv"),
                        header = T,
                        stringsAsFactors = F)
-
-# birth_episodes <- birth_episodes[order(encrypted_hesid, admidate, epiorder)]
-# birth_episodes[, epi_per_child := seq_len(.N), by = .(encrypted_hesid)]
-# birth_episodes <- birth_episodes[epi_per_child == 1]
-
-# lt <- as.POSIXlt(birth_episodes$epistart)
-# birth_episodes[, academicyearofbirth := lt$year + (lt$mo >= 8) + 1900]
-# rm(lt)
 
 lt <- as.POSIXlt(birth_episodes$bday)
 birth_episodes[, academicyearofbirth := lt$year + (lt$mo >= 8) + 1900]
@@ -42,10 +35,6 @@ cohort_spine <- birth_episodes[academicyearofbirth %in% birth_cohorts, c("encryp
                                                                          "stillb")]
 
 setnames(cohort_spine, "bday", "dob")
-#setnames(cohort_spine, "epistart", "index_epistart")
-#cohort_spine[, index_epi_start_type := "birth"]
-
-#table(cohort_spine$academicyearofbirth)
 
 rm(birth_episodes); gc()
 
@@ -580,7 +569,7 @@ cohort_spine[!is.na(date_first_ae) & date_first_ae == date_first_hes, first_hes_
 
 # * census ----------------------------------------------------------------
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 tables <- subset(sqlTables(dbhandle), TABLE_SCHEM == "dbo")
 
 keep <- tables$TABLE_NAME[grepl("Spring|Summer|Autumn", tables$TABLE_NAME)]
@@ -644,7 +633,7 @@ rm(tables, generate_npd_source)
 
 # * plasc -----------------------------------------------------------------
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 tables <- subset(sqlTables(dbhandle), TABLE_SCHEM == "dbo")
 
 keep <- tables$TABLE_NAME[grepl("PLASC", tables$TABLE_NAME)]
@@ -708,7 +697,7 @@ npd_source[, source := "Census"]
 
 # * ap --------------------------------------------------------------------
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT AP_PupilMatchingRefAnonymous, AP_ACADYR FROM AP_Census_2008_to_2020")))
 
 temp[, AcademicYear := as.integer(substr(AP_ACADYR, 6, 9))]
@@ -729,7 +718,7 @@ rm(temp)
 
 # * pru -------------------------------------------------------------------
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT PRU_PupilMatchingRefAnonymous, PRU_AcademicYear, PRU_CensusDate FROM PRU_Census_2010_to_2013")))
 temp[, AcademicYear := as.integer(substr(PRU_AcademicYear, 6, 9))]
 
@@ -748,7 +737,7 @@ rm(temp)
 
 # * eyc -------------------------------------------------------------------
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT EYC_PupilMatchingRefAnonymous, EYC_ACADYR FROM EYC_2008_to_2020")))
 temp[, AcademicYear := as.integer(substr(EYC_ACADYR, 6, 9))]
 
@@ -767,39 +756,10 @@ temp[, source := "EYC"]
 npd_source <- rbind(npd_source, temp)
 rm(temp)
 
-# * nccis -----------------------------------------------------------------
-
-# this only added minimal numbers so not worth adding
-
-# dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
-# temp <- data.table(sqlQuery(dbhandle, paste0("SELECT NCCIS_PupilMatchingRefAnonymous, NCCIS_ACADYR, NCCIS_Current_Activity_Start_Date FROM NCCIS_2013_to_2019")))
-# 
-# temp <- temp[!is.na(NCCIS_PupilMatchingRefAnonymous)]
-# temp <- temp[NCCIS_PupilMatchingRefAnonymous %in% cohort_spine$PupilMatchingRefAnonymous]
-# temp <- distinct(temp)
-# temp[, AcademicYear := as.integer(substr(NCCIS_ACADYR, 6, 9))]
-# 
-# setnames(temp, c("NCCIS_PupilMatchingRefAnonymous", "NCCIS_Current_Activity_Start_Date"), c("PupilMatchingRefAnonymous", "CensusDate"))
-# temp <- temp[, c("PupilMatchingRefAnonymous", "AcademicYear", "CensusDate")]
-# 
-# temp <- subset(temp, !is.na(AcademicYear) & !is.na(CensusDate))
-# 
-# temp[, source := "NCCIS"]
-# 
-# npd_source <- rbind(npd_source, temp)
-# rm(temp)
-# gc()
-# 
-# npd_source <- npd_source[order(PupilMatchingRefAnonymous, CensusDate)]
-# npd_source[, dup := duplicated(PupilMatchingRefAnonymous)]
-# npd_source <- npd_source[dup == F]
-# npd_source[, dup := NULL]
-# gc()
-
 # * eyfsp -------------------------------------------------------------------
 
 # last time of the year a child turns 5
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT FSP_PupilMatchingRefAnonymous, FSP_ACADYR FROM EYFSP_2008_to_2019")))
 
 temp <- temp[!is.na(FSP_PupilMatchingRefAnonymous)]
@@ -829,7 +789,7 @@ gc()
 # * ks2 -------------------------------------------------------------------
 
 #  May
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT KS2_PupilMatchingRefAnonymous, KS2_ACADYR FROM KS2Pupil_2002_to_2019")))
 
 temp <- temp[!is.na(KS2_PupilMatchingRefAnonymous)]
@@ -859,7 +819,7 @@ gc()
 # * ks4 -------------------------------------------------------------------
 
 # May/Jun
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT KS4_PupilMatchingRefAnonymous, KS4_ACADYR FROM KS4Pupil_2011_to_2014")))
 
 temp <- temp[!is.na(KS4_PupilMatchingRefAnonymous)]
@@ -880,7 +840,7 @@ npd_source <- rbind(npd_source, temp)
 rm(temp)
 gc()
 
-dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
+dbhandle <- odbcDriverConnect('conn_str_omitted')
 temp <- data.table(sqlQuery(dbhandle, paste0("SELECT KS4_PupilMatchingRefAnonymous, KS4_ACADYR FROM KS4Pupil_2015_to_2019")))
 
 temp <- temp[!is.na(KS4_PupilMatchingRefAnonymous)]
@@ -897,39 +857,6 @@ temp <- subset(temp, !is.na(AcademicYear) & !is.na(CensusDate))
 npd_source <- rbind(npd_source, temp)
 rm(temp)
 gc()
-
-#  * ks5 ------------------------------------------------------------------
-
-# this only added minimal numbers so not worth adding
-
-# # May/Jun
-# 
-# dbhandle <- odbcDriverConnect('Driver={ODBC Driver 17 for SQL Server};Server=C1VMLSQL03V;Database=2001019;trusted_connection=yes')
-# temp <- data.table(sqlQuery(dbhandle, paste0("SELECT KS5_PupilMatchingRefAnonymous, KS5_ACADYR FROM KS5Student_2013_to_2019")))
-# 
-# temp <- temp[!is.na(KS5_PupilMatchingRefAnonymous)]
-# temp <- temp[KS5_PupilMatchingRefAnonymous %in% cohort_spine$PupilMatchingRefAnonymous]
-# temp <- distinct(temp)
-# 
-# temp[, AcademicYear := as.integer(substr(KS5_ACADYR, 6, 9))]
-# temp[, CensusDate := as.Date(paste0(AcademicYear, "-05-31"))]
-# 
-# setnames(temp, "KS5_PupilMatchingRefAnonymous", "PupilMatchingRefAnonymous")
-# temp <- temp[, c("PupilMatchingRefAnonymous", "AcademicYear", "CensusDate")]
-# 
-# temp <- subset(temp, !is.na(AcademicYear) & !is.na(CensusDate))
-# 
-# temp[, source := "KS5"]
-# 
-# npd_source <- rbind(npd_source, temp)
-# rm(temp)
-# gc()
-# 
-# npd_source <- npd_source[order(PupilMatchingRefAnonymous, CensusDate)]
-# npd_source[, dup := duplicated(PupilMatchingRefAnonymous)]
-# npd_source <- npd_source[dup == F]
-# npd_source[, dup := NULL]
-# gc()
 
 # * merge into spine first NPD contact ------------------------------------
 

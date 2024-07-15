@@ -1,20 +1,15 @@
-
 # *******************************************
 # Matthew Jay. matthew.jay@ucl.ac.uk
-# Gets chronic health conditions data
+# Initial processing for open cohorts using ONS denominators
 # *******************************************
 
-# LOAD --------------------------------------------------------------------
-
 options(scipen = 999)
+
 setwd("[path omitted]")
 assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
-
 library(data.table)
 
 master_dir <- "[path omitted]"
-
-load("1_CHC_CUMUL/processed/cohort_spine_censor.rda")
 
 # load diagnosis codes
 diagnoses <- fread(paste0(master_dir, "/HES_APC_DIAG_combined.csv"),
@@ -22,48 +17,55 @@ diagnoses <- fread(paste0(master_dir, "/HES_APC_DIAG_combined.csv"),
                    stringsAsFactors = F,
                    integer64 = "character")
 
-# Subset to those in cohort
-diagnoses <- diagnoses[encrypted_hesid %in% cohort_spine$encrypted_hesid]
-
-# get age vars
-diagnoses <- merge(diagnoses,
-                   cohort_spine[, c("encrypted_hesid", "academicyearofbirth", "dob")],
-                   by = "encrypted_hesid",
-                   all.x = T)
-
-rm(cohort_spine)
-
-# check epikey (a problem with epikeys of 19 characters)
 lt <- as.POSIXlt(diagnoses$epistart)
 diagnoses$epifyear <- lt$year + (lt$mo >= 3) + 1900
 rm(lt)
 
-#table(diagnoses$epifyear, nchar(diagnoses$epikey))
+# Get month and year of birth
+mydob <- fread(paste0(master_dir, "/HES_APC_mybirth_combined.csv"),
+               header = T,
+               stringsAsFactors = F,
+               integer64 = "character")
 
+diagnoses <- merge(diagnoses,
+                   mydob[, c("encrypted_hesid", "my_dob")],
+                   by = "encrypted_hesid",
+                   all.x = T)
 
+rm(mydob); gc()
+
+lt <- as.POSIXlt(diagnoses$my_dob)
+diagnoses$birthfyear <- lt$year + (lt$mo >= 3) + 1900
+rm(lt)
+
+#table(diagnoses$birthfyear, useNA = "always")
+
+diagnoses <- diagnoses[birthfyear %in% 2003:2019]
+
+diagnoses <- diagnoses[epifyear %in% 2003:2020]
+diagnoses[startage > 7000, startage := 0]
+diagnoses <- diagnoses[startage < 16]
+
+# Deduplicate per patient and code.
+# We only need the first instance of each code
+diagnoses <- diagnoses[order(encrypted_hesid, diag)]
+diagnoses <- diagnoses[, dups := duplicated(diagnoses[, c("encrypted_hesid", "diag")])]
+diagnoses <- diagnoses[dups == F]
+diagnoses[, dups := NULL]
 
 # calculate LOS using the cleaned start and end dates
-# get admission dates and startage
+gc()
 all_episodes <- fread(paste0(master_dir, "/HES_APC_DIS_ADMI_EPI_combined.csv"),
                       header = T,
                       stringsAsFactors = F)
 
 all_episodes <- all_episodes[encrypted_hesid %in% diagnoses$encrypted_hesid]
 all_episodes[, epikey := as.character(epikey)]
-# table(nchar(all_episodes$epikey))
+all_episodes <- all_episodes[epikey %in% diagnoses$epikey]
 
 lt <- as.POSIXlt(all_episodes$epistart)
 all_episodes$epifyear <- lt$year + (lt$mo >= 3) + 1900
 rm(lt)
-
-# table(all_episodes$epifyear, nchar(all_episodes$epikey))
-# 
-# table(diagnoses$epikey %in% all_episodes$epikey)
-# table(diagnoses$epifyear, diagnoses$epikey %in% all_episodes$epikey)
-
-# 2021 onwards a problem - let's implicitly drop them
-all_episodes <- all_episodes[epikey %in% diagnoses$epikey]
-# table(all_episodes$epifyear)
 
 # missing end dates
 #table(all_episodes$epifyear, is.na(all_episodes$disdate))
@@ -79,15 +81,19 @@ diagnoses <- merge(diagnoses,
                    by = c("encrypted_hesid", "epikey"),
                    all.x = T)
 
-rm(all_episodes)
+rm(all_episodes); gc()
 
 # drop missing admidate
-#table(is.na(diagnoses$admidate), diagnoses$epifyear)
-diagnoses <- diagnoses[!is.na(admidate)]
+sum(is.na(diagnoses$admidate))
+# table(is.na(diagnoses$admidate), diagnoses$epicyear)
+# diagnoses <- diagnoses[!is.na(admidate)]
 
 diagnoses[, admi_los_nights := as.integer(difftime(disdate, admidate, units = "days"))]
-#summary(diagnoses$admi_los_nights)
-#table(diagnoses$admi_los_nights < 0, useNA = "always")
+# summary(diagnoses$admi_los_nights)
+# table(diagnoses$admi_los_nights < 0)
+
+diagnoses[admi_los_nights < 0, admidate := epistart]
+diagnoses[admi_los_nights < 0, admi_los_nights := 0]
 
 # NOW IMPORT HARDELID CODES
 hardelid <- fread("code lists/hardelid.csv",
@@ -120,19 +126,23 @@ rm(hardelid)
 # deal with flags
 chc_diagnoses[, drop := F]
 chc_diagnoses[flag == "LOS3" & admi_los_nights < 3, drop := T]
-chc_diagnoses[flag == "AGE10" & (startage < 10 | startage >= 7001), drop := T]
+chc_diagnoses[flag == "AGE10" & startage < 10, drop := T]
 chc_diagnoses <- chc_diagnoses[drop == F]
 chc_diagnoses[, drop := NULL]
 
-# make startage > 7000 = 0 as is easier in the code later
-chc_diagnoses[startage >= 7001, startage := 0]
+# tidy
+chc_diagnoses <- chc_diagnoses[, c("encrypted_hesid",
+                                   "my_dob",
+                                   "birthfyear",
+                                   "epifyear",
+                                   "epistart",
+                                   "startage",
+                                   "diag",
+                                   "type",
+                                   "category")]
 
-# drop any aged 16 or greater as not needed
-chc_diagnoses <- chc_diagnoses[startage < 16]
-
-# drop after September 2020
-chc_diagnoses <- chc_diagnoses[epistart < as.Date("2020-09-01")]
+chc_diagnoses <- chc_diagnoses[order(encrypted_hesid, epistart)]
 
 # save
-save(chc_diagnoses, file = "chc_cumul/processed/chc_diagnoses.rda")
+save(chc_diagnoses, file = "1_CHC_CUMUL/processed/chc_diagnoses_ons.rda")
 rm(list = ls()); gc()

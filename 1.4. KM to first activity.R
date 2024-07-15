@@ -1,11 +1,13 @@
+
 # *******************************************
-# Matthew Jay, matthew.jay@ucl.ac.uk
+# Matthew Jay. matthew.jay@ucl.ac.uk
+# Creates Kaplan-Meier plots to first activity in NPD and HES
 # *******************************************
 
 # LOAD --------------------------------------------------------------------
 
-setwd("[]:/Working/Matt/")
-assign(".lib.loc", c(.libPaths(), "[]:/Working/Matt/r"), envir = environment(.libPaths))
+setwd("[path omitted]")
+assign(".lib.loc", c(.libPaths(), "[path omitted]"), envir = environment(.libPaths))
 library(data.table)
 library(survival)
 library(ggplot2)
@@ -14,7 +16,7 @@ library(gridExtra)
 library(survminer)
 library(dplyr)
 
-master_dir <- "[]:/Working/Master data TEST"
+master_dir <- "[path omitted]"
 
 load("chc_cumul/processed/cohort_spine_censor.rda")
 
